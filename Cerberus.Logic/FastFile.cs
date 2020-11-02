@@ -1,397 +1,262 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Cerberus.Logic.Extensions;
+using System;
+using System.Diagnostics.Contracts;
 using System.IO;
-using PhilLibX.IO;
-using System.Security.Cryptography;
 using System.IO.Compression;
+using System.Text;
 
 namespace Cerberus.Logic
 {
-    public static class FastFile
+    public partial class FastFile : IDisposable
     {
-        /// <summary>
-        /// Invalid Characters from C# Reference Source
-        /// </summary>
-        internal static readonly char[] InvalidPathChars =
+
+        private bool _isDisposed = false;
+        private readonly Stream _openFileStream;
+
+        private readonly DevType _dev = DevType.InfinityWard;
+        private readonly char _compression = '0';
+        private readonly string _type = "100";
+        private readonly int _version = 5;
+        private readonly DBType _dbType = DBType.Client;
+        private readonly DBPlatform _platform = DBPlatform.PC;
+        private readonly bool _isEncrypted = false;
+        private readonly string _buildNumber = string.Empty;
+        private readonly XFile _xFileHeader = new XFile();
+        private readonly string _ffName = string.Empty;
+
+        public CompressionLevel GetCompressionLevel()
         {
-            '\"', '<', '>', '|', '\0',
-            (char)1, (char)2, (char)3, (char)4, (char)5, (char)6, (char)7, (char)8, (char)9, (char)10,
-            (char)11, (char)12, (char)13, (char)14, (char)15, (char)16, (char)17, (char)18, (char)19, (char)20,
-            (char)21, (char)22, (char)23, (char)24, (char)25, (char)26, (char)27, (char)28, (char)29, (char)30,
-            (char)31
-        };
-
-        /// <summary>
-        /// Black Ops II Fast File Decryption Key
-        /// </summary>
-        private static readonly byte[] FastFileKey =
-        {
-            0x64, 0x1D, 0x8A, 0x2F, 0xE3, 0x1D, 0x3A, 0xA6, 0x36, 0x22, 0xBB, 0xC9, 0xCE,
-            0x85, 0x87, 0x22, 0x9D, 0x42, 0xB0, 0xF8, 0xED, 0x9B, 0x92, 0x41, 0x30, 0xBF,
-            0x88, 0xB6, 0x5E, 0xDC, 0x50, 0xBE
-        };
-
-        /// <summary>
-        /// Black Ops III Fast File Search Needle
-        /// </summary>
-        private static readonly byte[] NeedleBo3 = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-
-        /// <summary>
-        /// Black Ops III Fast File Search Needle
-        /// </summary>
-        private static readonly byte[] NeedleBo2 = { 0xFF, 0xFF, 0xFF, 0xFF };
-
-        /// <summary>
-        /// Decodes Deflate byte array to Memory Stream
-        /// </summary>
-        /// <param name="data">Byte Array of Deflate Data</param>
-        /// <returns>Decoded Memory Stream</returns>
-        public static MemoryStream Decode(byte[] data)
-        {
-            MemoryStream output = new MemoryStream();
-            MemoryStream input = new MemoryStream(data);
-
-            using (DeflateStream deflateStream = new DeflateStream(input, CompressionMode.Decompress))
+            return this._compression switch
             {
-                deflateStream.CopyTo(output);
-            }
-
-            output.Flush();
-            output.Position = 0;
-
-            return output;
-        }
-
-        public static List<string> Decompress(string filePath, string outputPath)
-        {
-            Func<BinaryReader, List<string>> extractMethod = null;
-
-            using (var reader = new BinaryReader(File.OpenRead(filePath)))
-            using(var writer = new BinaryWriter(File.Create(outputPath)))
-            {
-                var magic = reader.ReadUInt64();
-                var version = reader.ReadUInt32();
-
-                if(magic != 0x3030303066664154 && magic != 0x3030317566664154 && magic != 0x3030313066664154)
-                {
-                    throw new Exception("Invalid Fast File Magic.");
-                }
-
-                switch(version)
-                {
-                    case 0x251:
-                        DecompressBO3(reader, writer);
-                        extractMethod = ExtractScriptsBo3;
-                        break;
-                    case 0x93:
-                        DecompressBO2(reader, writer);
-                        extractMethod = ExtractScriptsBo2;
-                        break;
-                    default:
-                        throw new Exception("Invalid Fast File Version.");
-                }
-            }
-
-            using(var reader = new BinaryReader(File.OpenRead(outputPath)))
-            {
-                return extractMethod?.Invoke(reader);
-            }
+                'u' => CompressionLevel.Fastest,
+                '0' => CompressionLevel.Optimal,
+                _ => throw new InvalidDataException("Invalid compression type.")
+            };
         }
 
         /// <summary>
-        /// Decompresses a Black Ops III Fast File
+        /// Create a new instance of the Fast File class to access data in the compressed fast files used in Call of Duty games
         /// </summary>
-        private static void DecompressBO3(BinaryReader reader, BinaryWriter writer)
+        /// <param name="path">A path to the input compressed Fast File</param>
+        public FastFile(string path)
         {
-            var flags = reader.ReadBytes(4);
+            Contract.Requires(File.Exists(path));
 
-            // Validate the flags, we only support ZLIB, PC, and Non-Encrypted FFs
-            if (flags[1] != 1)
+            this._openFileStream = File.OpenRead(path);
+
+            using (BinaryReader br = new BinaryReader(this._openFileStream, Encoding.UTF8, true))
             {
-                throw new Exception("Invalid Fast File Compression. Only ZLIB Fast Files are supported.");
-            }
-            if (flags[2] != 0)
-            {
-                throw new Exception("Invalid Fast File Platform. Only PC Fast Files are supported.");
-            }
-            if (flags[3] != 0)
-            {
-                throw new Exception("Encrypted Fast Files are not supported");
-            }
+                // Sets the local variable devType to the first 2 characters of the file
+                string devType = new string(br.ReadChars(2));
 
-            reader.BaseStream.Position = 144;
-
-            var size = reader.ReadInt64();
-            var consumed = 0;
-
-            reader.BaseStream.Position = 584;
-
-            while(consumed < size)
-            {
-                // Read Block Header
-                var compressedSize   = reader.ReadInt32();
-                var decompressedSize = reader.ReadInt32();
-                var blockSize        = reader.ReadInt32();
-                var blockPosition    = reader.ReadInt32();
-
-                // Validate the block position, it should match
-                if(blockPosition != reader.BaseStream.Position - 16)
+                // Checks if we support this particular dev type. Prevents custom or unknown dev types from being processed
+                if (!SupportedDevTypes.ContainsKey(devType))
                 {
-                    throw new Exception("Block Position does not match Stream Position.");
+                    throw new InvalidDataException("File input contains unknown developer.");
                 }
 
-                // Check for padding blocks
-                if(decompressedSize == 0)
+                // Set Dev equal to the developer type of this fast file
+                this._dev = SupportedDevTypes[devType];
+
+                // Check if the file is a Fast File
+                if (!Encoding.UTF8.GetString(br.ReadBytes(2)).Equals(FastFileAbrv))
                 {
-                    reader.BaseStream.Position += Utility.ComputePadding((int)reader.BaseStream.Position, 0x800000);
-                    continue;
+                    throw new InvalidDataException("File input does not contain a valid Fast File");
                 }
 
-                reader.BaseStream.Position += 2;
-                writer.Write(Decode(reader.ReadBytes(compressedSize - 2)).ToArray());
+                // Get the compression character
+                this._compression = br.ReadChar();
 
-                consumed += decompressedSize;
+                // Unknown purpose always 100 or 000
+                this._type = Encoding.UTF8.GetString(br.ReadBytes(3));
+                
+                // Get the fast file version
+                this._version = br.ReadInt32();
 
-                // Sinze Fast Files are aligns, we must skip the full block
-                reader.BaseStream.Position = blockPosition + 16 + blockSize;
-            }
-        }
-
-        /// <summary>
-        /// Extracts scripts from a Black Ops III Fast File
-        /// </summary>
-        private static List<string> ExtractScriptsBo3(BinaryReader reader)
-        {
-            // Need to skip the strings and assets
-            // to avoid redundant checks on these by
-            // the scanner
-            var stringCount = reader.ReadInt32();
-            reader.BaseStream.Position = 32;
-            var assetCount = reader.ReadInt32();
-
-            reader.BaseStream.Position = 56 + (stringCount - 1) * 8;
-
-            for(int i = 0; i < stringCount; i++)
-            {
-                reader.ReadNullTerminatedString();
-            }
-
-            reader.BaseStream.Position += 16 * assetCount;
-
-
-            var results = new List<string>();
-            var offsets = reader.FindBytes(NeedleBo3);
-
-            foreach(var offset in offsets)
-            {
-                try
+                if (this._dev is DevType.Treyarch)
                 {
-                    reader.BaseStream.Position = offset;
-
-                    var namePtr = reader.ReadUInt64();
-                    var size = reader.ReadInt64();
-                    var dataPtr = reader.ReadUInt64();
-
-                    // Check the pointers
-                    if (namePtr == 0xFFFFFFFFFFFFFFFF && dataPtr == 0xFFFFFFFFFFFFFFFF && size <= uint.MaxValue)
+                    // If we are on Black Ops 3 PC or higher
+                    if (this._version >= (int)TAFastFileVersion.T7BlackOps3)
                     {
-                        // Linker only allows names up to 127
-                        var name = reader.ReadNullTerminatedString(128);
+                        this._dbType = (DBType)br.ReadInt16();
 
-                        if (name.IndexOfAny(InvalidPathChars) < 0)
+                        if (this._dbType is DBType.Server)
                         {
-                            var extension = Path.GetExtension(name);
+                            throw new InvalidDataException("Server Fast Files are unsupported");
+                        }
 
-                            // Last check, extension
-                            if (extension == ".gsc" || extension == ".csc")
-                            {
-                                var outputPath = "ExtractedScripts\\Black Ops III\\" + name + "c";
-                                Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+                        this._platform = (DBPlatform)br.ReadByte();
 
-                                File.WriteAllBytes(outputPath, reader.ReadBytes((int)size));
+                        if (this._platform is not DBPlatform.PC)
+                        {
+                            // TODO: Support other platforms
+                            throw new InvalidDataException($"Unsupported platform - {this._platform}");
+                        }
 
-                                results.Add(outputPath);
-                            }
+                        this._isEncrypted = br.ReadByte() != 0;
+
+                        if (this._isEncrypted)
+                        {
+                            // TODO: Support encrpytion keys
+                            throw new InvalidDataException("File input is encryted");
+                        }
+
+                        // Unknown Data
+                        br.ReadBytes(12);
+
+                        // CheckSum
+                        br.ReadInt32();
+                        br.ReadInt32();
+                        br.ReadInt32();
+                        br.ReadInt32();
+
+                        this._buildNumber = br.PeekNativeString(maxSize: 100);
+
+                        // Seek to the end of the max build number size
+                        br.BaseStream.Seek(100, SeekOrigin.Current);
+
+                        this._xFileHeader = new XFile();
+                        this._xFileHeader.Size = br.ReadInt64();
+
+                        // Skip XFile Padding
+                        br.ReadBytes(16);
+
+                        // Create New Block Sizes array with the propery element count
+                        this._xFileHeader.BlockSizes = new long[(int)XFileBlocks.T7Count];
+
+                        // Loop through block sizes and assign them accordingly
+                        for (int i = 0; i < (int)XFileBlocks.T7Count; i++)
+                        {
+                            this._xFileHeader.BlockSizes[i] = br.ReadInt64();
+                        }
+
+                        this._ffName = br.PeekNativeString(maxSize: 64);
+
+                        // Seek to the end of the max ff name size
+                        br.BaseStream.Seek(64, SeekOrigin.Current);
+
+                        // Read Auth Signature - unneeded
+                        br.ReadBytes(256);
+
+                        // Padding?
+                        br.ReadBytes(16);
+                    }
+                    else if(this._version >= (int)TAFastFileVersion.T6BlackOps2)
+                    {
+                        if (!Encoding.UTF8.GetString(br.ReadBytes(8)).Equals(T6HeaderMagic))
+                        {
+                            throw new InvalidDataException("Found Black Ops 2 FF, but could not read valid header magic");
+                        }
+
+                        // Padding
+                        br.ReadInt32();
+
+                        this._ffName = br.PeekNativeString(maxSize: 32);
+
+                        // Seek to the end of the max ff name size
+                        br.BaseStream.Seek(64, SeekOrigin.Current);
+
+                        // Read Auth Signature - unneeded
+                        br.ReadBytes(256);
+                    }
+                }
+            }
+        }
+
+        public void DecompressToFile(string outputPath)
+        {
+            using (BinaryReader br = new BinaryReader(this._openFileStream, Encoding.UTF8, true))
+            using (BinaryWriter bw = new BinaryWriter(File.Create(outputPath)))
+            {
+                if (this._dev is DevType.Treyarch)
+                {
+                    switch (this._version)
+                    {
+                        case (int)TAFastFileVersion.T6BlackOps2:
+                        {
+                            DecompressT6(br, bw);
+                            break;
+                        }
+
+                        case (int)TAFastFileVersion.T7BlackOps3:
+                        {
+                            DecompressT7(br, bw);
+                            break;
                         }
                     }
                 }
-                catch
+            }
+        }
+
+        private void DecompressT6(BinaryReader br, BinaryWriter bw)
+        {
+
+        }
+
+        private void DecompressT7(BinaryReader br, BinaryWriter bw)
+        {
+            long consumed = 0;
+            while (consumed < this._xFileHeader.Size)
+            {
+                // Compressed Size
+                int blockCompSize = br.ReadInt32();
+
+                // Decompressed Size
+                int blockDecompSize = br.ReadInt32();
+
+                // Block Size
+                int blockSize = br.ReadInt32();
+
+                // Block Position
+                int blockPos = br.ReadInt32();
+
+                if (blockPos != br.BaseStream.Position - 16)
                 {
+                    throw new InvalidDataException("Stream Position does not match expected position");
+                }
+
+                if (blockDecompSize == 0)
+                {
+                    br.BaseStream.Seek(Utility.ComputePadding((int)br.BaseStream.Position, 0x800000), SeekOrigin.Current);
                     continue;
                 }
-            }
 
-            return results;
-        }
+                br.BaseStream.Seek(2, SeekOrigin.Current);
 
-        /// <summary>
-        /// Decompresses a Black Ops II Fast File
-        /// </summary>
-        private static void DecompressBO2(BinaryReader reader, BinaryWriter writer)
-        {
-            reader.BaseStream.Position += 12;
-
-            var ivTable = new byte[16000];
-            var ivCounter = new int[4];
-
-            FillIVTable(ivTable, reader.ReadBytes(0x20));
-            SetupIVCounter(ivCounter);
-
-            reader.BaseStream.Position += 0x100;
-
-            int sectionIndex = 0;
-            var salsa = new Salsa20 { Key = FastFileKey };
-
-            while (true)
-            {
-                int size = reader.ReadInt32();
-
-                if (size == 0)
-                    break;
-
-                salsa.IV = GetIV(sectionIndex % 4, ivTable, ivCounter);
-
-                var decryptor = salsa.CreateDecryptor();
-
-                byte[] decryptedData = decryptor.TransformFinalBlock(reader.ReadBytes(size), 0, size);
-
-                writer.Write(Decode(decryptedData).ToArray());
-
-                using (var sha1 = SHA1.Create())
+                byte[] block = Utility.Deflate(br.ReadBytes(blockCompSize - 2)).ToArray();
+                if (block.Length != blockDecompSize)
                 {
-                    UpdateIVTable(sectionIndex % 4, sha1.ComputeHash(decryptedData), ivTable, ivCounter);
+                    // Should never execute
+                    throw new IndexOutOfRangeException($"Decompressed block size ({block.Length}) did not match expected size ({blockDecompSize})");
                 }
+                bw.Write(block);
 
-                sectionIndex++;
+                consumed += block.Length;
+
+                // Making sure to align our reader to end of the current block
+                br.BaseStream.Seek(blockPos + 16 + blockSize, SeekOrigin.Begin);
             }
         }
 
-        /// <summary>
-        /// Extracts scripts from a Black Ops II Fast File
-        /// </summary>
-        private static List<string> ExtractScriptsBo2(BinaryReader reader)
+        public void Dispose()
         {
-            // Need to skip the strings and assets
-            // to avoid redundant checks on these by
-            // the scanner
-            reader.BaseStream.Position = 40;
-            var stringCount = reader.ReadInt32();
-            reader.BaseStream.Position = 56;
-            var assetCount = reader.ReadInt32();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            reader.BaseStream.Position = 68 + stringCount * 4;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this._isDisposed) return;
 
-            for (int i = 0; i < stringCount; i++)
+            if (disposing)
             {
-                reader.ReadNullTerminatedString();
-            }
-
-            reader.BaseStream.Position += 8 * assetCount;
-
-
-            var results = new List<string>();
-            var offsets = reader.FindBytes(NeedleBo2);
-
-            foreach (var offset in offsets)
-            {
-                try
+                if (this._openFileStream is not null)
                 {
-                    reader.BaseStream.Position = offset;
-
-                    var namePtr = reader.ReadUInt32();
-                    var size = reader.ReadInt32();
-                    var dataPtr = reader.ReadUInt32();
-
-                    // Check the pointers
-                    if (namePtr == 0xFFFFFFFF && dataPtr == 0xFFFFFFFF && size <= int.MaxValue)
-                    {
-                        // Linker only allows names up to 127
-                        var name = reader.ReadNullTerminatedString(128);
-
-                        if (name.IndexOfAny(InvalidPathChars) < 0)
-                        {
-                            var extension = Path.GetExtension(name);
-
-                            // Last check, extension
-                            if (extension == ".gsc" || extension == ".csc")
-                            {
-                                var outputPath = "ExtractedScripts\\BlackOps II\\" + name + "c";
-                                Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
-
-                                File.WriteAllBytes(outputPath, reader.ReadBytes((int)size));
-
-                                results.Add(outputPath);
-                            }
-                        }
-                    }
-                }
-                catch
-                {
-                    continue;
+                    this._openFileStream.Close();
                 }
             }
 
-            return results;
-        }
-
-        /// <summary>
-        /// Updates IV Table
-        /// </summary>
-        private static void UpdateIVTable(int index, byte[] hash, byte[] ivTable, int[] ivCounter)
-        {
-            for (int i = 0; i < 20; i += 5)
-            {
-                int value = (index + 4 * ivCounter[index]) % 800 * 5;
-                for (int x = 0; x < 5; x++)
-                    ivTable[4 * value + x + i] ^= hash[i + x];
-            }
-            ivCounter[index]++;
-        }
-
-        /// <summary>
-        /// Gets the IV
-        /// </summary>
-        private static byte[] GetIV(int index, byte[] ivTable, int[] ivCounter)
-        {
-            var iv = new byte[8];
-            int arrayIndex = (index + 4 * (ivCounter[index] - 1)) % 800 * 20;
-            Array.Copy(ivTable, arrayIndex, iv, 0, 8);
-            return iv;
-        }
-
-        /// <summary>
-        /// Sets up IV Counter
-        /// </summary>
-        private static void SetupIVCounter(int[] ivCounter)
-        {
-            for (int i = 0; i < 4; i++)
-                ivCounter[i] = 1;
-        }
-
-        /// <summary>
-        /// Fills IV Table
-        /// </summary>
-        private static void FillIVTable(byte[] ivTable, byte[] nameKey)
-        {
-            int nameKeyLength = Array.FindIndex(nameKey, b => b == 0);
-
-            int addDiv = 0;
-            for (int i = 0; i < ivTable.Length; i += nameKeyLength * 4)
-            {
-                for (int x = 0; x < nameKeyLength * 4; x += 4)
-                {
-                    if ((i + addDiv) >= ivTable.Length || i + x >= ivTable.Length)
-                        return;
-
-                    if (x > 0)
-                        addDiv = x / 4;
-                    else
-                        addDiv = 0;
-
-                    for (int y = 0; y < 4; y++)
-                        ivTable[i + x + y] = nameKey[addDiv];
-                }
-            }
+            this._isDisposed = true;
         }
     }
 }

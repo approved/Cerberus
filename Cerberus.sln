@@ -1,44 +1,37 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
-VisualStudioVersion = 16.0.29009.5
+VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.UI", "Cerberus.UI\Cerberus.UI.csproj", "{C2060E17-C072-42B3-AF9C-884827218DCE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.Logic", "Cerberus.Logic\Cerberus.Logic.csproj", "{E1492AB8-93BC-4239-804B-83A4DB7C3DE1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.Logic", "Cerberus.Logic\Cerberus.Logic.csproj", "{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.CLI", "Cerberus.CLI\Cerberus.CLI.csproj", "{57535F8F-4ADD-4E60-91B1-F20F29722DE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.CLI", "Cerberus.CLI\Cerberus.CLI.csproj", "{BD3937BD-742D-419E-B5F0-1F05F0B77A17}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cerberus.GUI", "Cerberus.GUI\Cerberus.GUI.csproj", "{121278D7-0F8E-4078-856D-B5C34139208D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
-		Debug|x86 = Debug|x86
-		Release|x86 = Release|x86
-		Ship|x86 = Ship|x86
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Debug|x86.ActiveCfg = Debug|x86
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Debug|x86.Build.0 = Debug|x86
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Release|x86.ActiveCfg = Release|x86
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Release|x86.Build.0 = Release|x86
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Ship|x86.ActiveCfg = Ship|x86
-		{C2060E17-C072-42B3-AF9C-884827218DCE}.Ship|x86.Build.0 = Ship|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Debug|x86.ActiveCfg = Debug|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Debug|x86.Build.0 = Debug|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Release|x86.ActiveCfg = Release|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Release|x86.Build.0 = Release|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Ship|x86.ActiveCfg = Ship|x86
-		{3655F8F1-FD9B-488F-B2B4-C3E0BD0891CB}.Ship|x86.Build.0 = Ship|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Debug|x86.ActiveCfg = Debug|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Debug|x86.Build.0 = Debug|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Release|x86.ActiveCfg = Release|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Release|x86.Build.0 = Release|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Ship|x86.ActiveCfg = Ship|x86
-		{BD3937BD-742D-419E-B5F0-1F05F0B77A17}.Ship|x86.Build.0 = Ship|x86
+		{E1492AB8-93BC-4239-804B-83A4DB7C3DE1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1492AB8-93BC-4239-804B-83A4DB7C3DE1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1492AB8-93BC-4239-804B-83A4DB7C3DE1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1492AB8-93BC-4239-804B-83A4DB7C3DE1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57535F8F-4ADD-4E60-91B1-F20F29722DE6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57535F8F-4ADD-4E60-91B1-F20F29722DE6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57535F8F-4ADD-4E60-91B1-F20F29722DE6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57535F8F-4ADD-4E60-91B1-F20F29722DE6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{121278D7-0F8E-4078-856D-B5C34139208D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{121278D7-0F8E-4078-856D-B5C34139208D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{121278D7-0F8E-4078-856D-B5C34139208D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{121278D7-0F8E-4078-856D-B5C34139208D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {4C6285C4-1EFD-4357-ACB9-A8DDBCEA92C8}
+		SolutionGuid = {2FF61A35-6CB3-4A1D-B23D-9C143A784532}
 	EndGlobalSection
 EndGlobal
