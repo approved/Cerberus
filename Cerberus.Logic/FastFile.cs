@@ -1,17 +1,14 @@
-﻿using Cerberus.Logic.Crypto;
-using Cerberus.Logic.Extensions;
+﻿using Cerberus.Logic.Extensions;
+using Cerberus.Logic.Games;
 using System;
-using System.Diagnostics.Contracts;
 using System.IO;
 using System.IO.Compression;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace Cerberus.Logic
 {
     public partial class FastFile : IDisposable
     {
-
         private bool _isDisposed = false;
         private readonly Stream _openFileStream;
 
@@ -19,22 +16,28 @@ namespace Cerberus.Logic
         private readonly char _compression = '0';
         private readonly string _type = "100";
         private readonly int _version = 5;
-        private readonly DBType _dbType = DBType.Client;
-        private readonly DBPlatform _platform = DBPlatform.PC;
+        private readonly ClientType _clientType = ClientType.Client;
+        private readonly Platform _platform = Platform.PC;
         private readonly bool _isEncrypted = false;
         private readonly string _buildNumber = string.Empty;
         private readonly XFile _xFileHeader = new XFile();
         private readonly string _ffName = string.Empty;
 
-        public CompressionLevel GetCompressionLevel()
+        public DevType GetDevType() => this._dev;
+        public int GetVersion() => this._version;
+        public ClientType GetClientType() => this._clientType;
+        public Platform GetPlatform() => this._platform;
+        public bool IsEncrypted() => this._isEncrypted;
+        public string GetBuildNumber() => this._buildNumber;
+        public XFile GetFileHeader() => this._xFileHeader;
+        public string GetName() => this._ffName;
+
+        public CompressionLevel GetCompressionLevel() => this._compression switch
         {
-            return this._compression switch
-            {
-                'u' => CompressionLevel.Fastest,
-                '0' => CompressionLevel.Optimal,
-                _ => throw new InvalidDataException("Invalid compression type.")
-            };
-        }
+            'u' => CompressionLevel.Fastest,
+            '0' => CompressionLevel.Optimal,
+            _ => throw new InvalidDataException("Invalid compression type.")
+        };
 
         /// <summary>
         /// Create a new instance of the Fast File class to access data in the compressed fast files used in Call of Duty games
@@ -42,7 +45,10 @@ namespace Cerberus.Logic
         /// <param name="path">A path to the input compressed Fast File</param>
         public FastFile(string path)
         {
-            Contract.Requires(File.Exists(path));
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
 
             this._openFileStream = File.OpenRead(path);
 
@@ -80,16 +86,16 @@ namespace Cerberus.Logic
                     // If we are on Black Ops 3 PC or higher
                     if (this._version >= (int)TAFastFileVersion.T7BlackOps3)
                     {
-                        this._dbType = (DBType)br.ReadInt16();
+                        this._clientType = (ClientType)br.ReadInt16();
 
-                        if (this._dbType is DBType.Server)
+                        if (this._clientType is ClientType.Server)
                         {
                             throw new InvalidDataException("Server Fast Files are unsupported");
                         }
 
-                        this._platform = (DBPlatform)br.ReadByte();
+                        this._platform = (Platform)br.ReadByte();
 
-                        if (this._platform is not DBPlatform.PC)
+                        if (this._platform is not Platform.PC)
                         {
                             // TODO: Support other platforms
                             throw new InvalidDataException($"Unsupported platform - {this._platform}");
@@ -145,7 +151,7 @@ namespace Cerberus.Logic
                     }
                     else if(this._version >= (int)TAFastFileVersion.T6BlackOps2)
                     {
-                        if (!Encoding.UTF8.GetString(br.ReadBytes(8)).Equals(T6HeaderMagic))
+                        if (!Encoding.UTF8.GetString(br.ReadBytes(8)).Equals(BlackOps2.HeaderMagic))
                         {
                             throw new InvalidDataException("Found Black Ops 2 FF, but could not read valid header magic");
                         }
@@ -176,105 +182,18 @@ namespace Cerberus.Logic
                     {
                         case (int)TAFastFileVersion.T6BlackOps2:
                         {
-                            DecompressT6(br, bw);
+                            BlackOps2.Decompress(this, br, bw);
                             break;
                         }
 
                         case (int)TAFastFileVersion.T7BlackOps3:
                         {
-                            DecompressT7(br, bw);
+                            BlackOps3.Decompress(this, br, bw);
                             break;
                         }
                     }
                 }
             }
-        }
-
-        private void DecompressT6(BinaryReader br, BinaryWriter bw)
-        {
-            byte[] ivTable = new byte[16000];
-            int[] ivCounter = new int[4] { 1, 1, 1, 1 };
-
-            Salsa20.FillIVTable(ivTable, Encoding.UTF8.GetBytes(this._ffName));
-
-            int sectionIndex = 0;
-            Salsa20 salsa = new Salsa20
-            {
-                Key = this._platform switch
-                {
-                    DBPlatform.PC => T6PCSalsaKey,
-                    DBPlatform.Playstation => T6PlaystationSalsaKey,
-                    DBPlatform.Xbox => T6XboxSalsaKey,
-                    _ => throw new NotImplementedException("Unknown platform found. Can not find salsa key.")
-                }
-            };
-
-            int size;
-            while ((size = br.ReadInt32()) != 0)
-            {
-                salsa.IV = Salsa20.GetIV(sectionIndex % 4, ivTable, ivCounter);
-
-                ICryptoTransform? decryptor = salsa.CreateDecryptor();
-
-                byte[] decryptedData = decryptor.TransformFinalBlock(br.ReadBytes(size), 0, size);
-
-                bw.Write(Utility.Deflate(decryptedData).ToArray());
-
-                using (SHA1 sha1 = SHA1.Create())
-                {
-                    Salsa20.UpdateIVTable(sectionIndex % 4, sha1.ComputeHash(decryptedData), ivTable, ivCounter);
-                }
-
-                sectionIndex++;
-            }
-        }
-
-        private void DecompressT7(BinaryReader br, BinaryWriter bw)
-        {
-            long consumed = 0;
-            int blockCount = 0;
-            while (consumed < this._xFileHeader.Size)
-            {
-                // Compressed Size
-                int blockCompSize = br.ReadInt32();
-
-                // Decompressed Size
-                int blockDecompSize = br.ReadInt32();
-
-                // Block Size
-                int blockSize = br.ReadInt32();
-
-                // Block Position
-                int blockPos = br.ReadInt32();
-
-                if (blockPos != br.BaseStream.Position - 16)
-                {
-                    throw new InvalidDataException("Stream Position does not match expected position");
-                }
-
-                if (blockDecompSize == 0)
-                {
-                    br.BaseStream.Seek(Utility.ComputePadding((int)br.BaseStream.Position, 0x800000), SeekOrigin.Current);
-                    continue;
-                }
-
-                br.BaseStream.Seek(2, SeekOrigin.Current);
-
-                byte[] block = Utility.Deflate(br.ReadBytes(blockCompSize - 2)).ToArray();
-                if (block.Length != blockDecompSize)
-                {
-                    // Should never execute
-                    throw new IndexOutOfRangeException($"Decompressed block size ({block.Length}) did not match expected size ({blockDecompSize})");
-                }
-                bw.Write(block);
-
-                consumed += block.Length;
-
-                // Making sure to align our reader to end of the current block
-                br.BaseStream.Seek(blockPos + 16 + blockSize, SeekOrigin.Begin);
-                blockCount++;
-            }
-            Console.WriteLine(blockCount);
         }
 
         public void Dispose()
