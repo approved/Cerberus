@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+
 namespace Cerberus.Logic.Algo
 {
     public static class BoyerMooreHorspool

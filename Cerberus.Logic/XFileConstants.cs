@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace Cerberus.Logic
+﻿namespace Cerberus.Logic
 {
     public partial class XFile
     {
