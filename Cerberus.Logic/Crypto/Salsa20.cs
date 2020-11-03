@@ -56,7 +56,7 @@ namespace Cerberus.Logic.Crypto
         /// <returns>A symmetric encryptor object.</returns>
         public override ICryptoTransform CreateEncryptor(byte[] rgbKey, byte[] rgbIV)
         {
-            if (rgbKey == null)
+            if (rgbKey is null)
             {
                 throw new ArgumentNullException(nameof(rgbKey));
             }
@@ -132,7 +132,7 @@ namespace Cerberus.Logic.Crypto
         // Verifies that iv is a legal value for a Salsa20 IV.
         private static void CheckValidIV(byte[] iv, string paramName)
         {
-            if (iv == null)
+            if (iv is null)
             {
                 throw new ArgumentNullException(paramName);
             }
@@ -234,7 +234,7 @@ namespace Cerberus.Logic.Crypto
             public int TransformBlock(byte[] inputBuffer, int inputOffset, int inputCount, byte[] outputBuffer, int outputOffset)
             {
                 // check arguments
-                if (inputBuffer == null)
+                if (inputBuffer is null)
                 {
                     throw new ArgumentNullException(nameof(inputBuffer));
                 }
@@ -249,7 +249,7 @@ namespace Cerberus.Logic.Crypto
                     throw new ArgumentOutOfRangeException(nameof(inputCount));
                 }
 
-                if (outputBuffer == null)
+                if (outputBuffer is null)
                 {
                     throw new ArgumentNullException(nameof(outputBuffer));
                 }
@@ -259,7 +259,7 @@ namespace Cerberus.Logic.Crypto
                     throw new ArgumentOutOfRangeException(nameof(outputOffset));
                 }
 
-                if (m_state == null)
+                if (m_state is null)
                 {
                     throw new ObjectDisposedException(GetType().Name);
                 }
@@ -307,12 +307,12 @@ namespace Cerberus.Logic.Crypto
 
             public void Dispose()
             {
-                if (m_state != null)
+                if (m_state.Length > 0)
                 {
                     Array.Clear(m_state, 0, m_state.Length);
                 }
 
-                m_state = null;
+                m_state = Array.Empty<uint>();
             }
 
             private static uint Rotate(uint v, int c) => (v << c) | (v >> (32 - c));
