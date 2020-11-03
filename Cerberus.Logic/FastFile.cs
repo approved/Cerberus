@@ -10,7 +10,7 @@ namespace Cerberus.Logic
     public partial class FastFile : IDisposable
     {
         private bool _isDisposed = false;
-        private readonly Stream _openFileStream;
+        private readonly FileStream _openFileStream;
 
         private readonly DevType _dev = DevType.InfinityWard;
         private readonly char _compression = '0';
@@ -45,11 +45,6 @@ namespace Cerberus.Logic
         /// <param name="path">A path to the input compressed Fast File</param>
         public FastFile(string path)
         {
-            if (string.IsNullOrEmpty(path))
-            {
-                return;
-            }
-
             this._openFileStream = File.OpenRead(path);
 
             using (BinaryReader br = new BinaryReader(this._openFileStream, Encoding.UTF8, true))
