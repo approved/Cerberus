@@ -1,8 +1,10 @@
-﻿using Cerberus.Logic.Extensions;
+﻿using Cerberus.Logic.Crypto;
+using Cerberus.Logic.Extensions;
 using System;
 using System.Diagnostics.Contracts;
 using System.IO;
 using System.IO.Compression;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Cerberus.Logic
@@ -154,7 +156,7 @@ namespace Cerberus.Logic
                         this._ffName = br.PeekNativeString(maxSize: 32);
 
                         // Seek to the end of the max ff name size
-                        br.BaseStream.Seek(64, SeekOrigin.Current);
+                        br.BaseStream.Seek(32, SeekOrigin.Current);
 
                         // Read Auth Signature - unneeded
                         br.ReadBytes(256);
@@ -190,12 +192,47 @@ namespace Cerberus.Logic
 
         private void DecompressT6(BinaryReader br, BinaryWriter bw)
         {
+            byte[] ivTable = new byte[16000];
+            int[] ivCounter = new int[4] { 1, 1, 1, 1 };
 
+            Salsa20.FillIVTable(ivTable, Encoding.UTF8.GetBytes(this._ffName));
+
+            int sectionIndex = 0;
+            Salsa20 salsa = new Salsa20
+            {
+                Key = this._platform switch
+                {
+                    DBPlatform.PC => T6PCSalsaKey,
+                    DBPlatform.Playstation => T6PlaystationSalsaKey,
+                    DBPlatform.Xbox => T6XboxSalsaKey,
+                    _ => throw new NotImplementedException("Unknown platform found. Can not find salsa key.")
+                }
+            };
+
+            int size;
+            while ((size = br.ReadInt32()) != 0)
+            {
+                salsa.IV = Salsa20.GetIV(sectionIndex % 4, ivTable, ivCounter);
+
+                ICryptoTransform? decryptor = salsa.CreateDecryptor();
+
+                byte[] decryptedData = decryptor.TransformFinalBlock(br.ReadBytes(size), 0, size);
+
+                bw.Write(Utility.Deflate(decryptedData).ToArray());
+
+                using (SHA1 sha1 = SHA1.Create())
+                {
+                    Salsa20.UpdateIVTable(sectionIndex % 4, sha1.ComputeHash(decryptedData), ivTable, ivCounter);
+                }
+
+                sectionIndex++;
+            }
         }
 
         private void DecompressT7(BinaryReader br, BinaryWriter bw)
         {
             long consumed = 0;
+            int blockCount = 0;
             while (consumed < this._xFileHeader.Size)
             {
                 // Compressed Size
@@ -235,7 +272,9 @@ namespace Cerberus.Logic
 
                 // Making sure to align our reader to end of the current block
                 br.BaseStream.Seek(blockPos + 16 + blockSize, SeekOrigin.Begin);
+                blockCount++;
             }
+            Console.WriteLine(blockCount);
         }
 
         public void Dispose()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -152,6 +153,57 @@ namespace Cerberus.Logic.Crypto
             }
 
             return bytes;
+        }
+
+        public static void UpdateIVTable(int index, byte[] hash, byte[] ivTable, int[] ivCounter)
+        {
+            for (int i = 0; i < 20; i += 5)
+            {
+                int value = (index + 4 * ivCounter[index]) % 800 * 5;
+                for (int j = 0; j < 5; j++)
+                {
+                    ivTable[4 * value + j + i] ^= hash[i + j];
+                }
+            }
+
+            ivCounter[index]++;
+        }
+
+        public static byte[] GetIV(int index, byte[] ivTable, int[] ivCounter)
+        {
+            byte[] iv = new byte[8];
+            int arrayIndex = (index + 4 * (ivCounter[index] - 1)) % 800 * 20;
+            Array.Copy(ivTable, arrayIndex, iv, 0, 8);
+            return iv;
+        }
+
+        public static void FillIVTable(byte[] ivTable, byte[] nameKey)
+        {
+            int addDiv = 0;
+            for(int i = 0; i < ivTable.Length;  i += nameKey.Length * 4)
+            {
+                for (int j = 0; j < nameKey.Length * 4; j += 4)
+                {
+                    if (i + addDiv >= ivTable.Length || i + j >= ivTable.Length)
+                    {
+                        return;
+                    }
+
+                    if (j > 0)
+                    {
+                        addDiv = j / 4;
+                    }
+                    else
+                    {
+                        addDiv = 0;
+                    }
+
+                    for (int k = 0; k < 4; k++)
+                    {
+                        ivTable[i + j + k] = nameKey[addDiv];
+                    }
+                }
+            }
         }
 
         int m_rounds;
