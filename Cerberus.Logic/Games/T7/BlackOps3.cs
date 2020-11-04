@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Cerberus.Logic.Extensions;
+using System;
 using System.IO;
+using System.Text;
 
-namespace Cerberus.Logic.Games
+namespace Cerberus.Logic.Games.T7
 {
     public partial class BlackOps3
     {
@@ -50,6 +52,31 @@ namespace Cerberus.Logic.Games
                 br.BaseStream.Seek(blockPos + 16 + blockSize, SeekOrigin.Begin);
                 blockCount++;
             }
+        }
+
+        public uint HashifyString(string input)
+        {
+            byte[] inputBytes = Encoding.UTF8.GetBytes(input);
+            if (inputBytes[0] - 65 <= 25)
+            {
+                inputBytes[0] += 32;
+            }
+
+            uint hash = ((uint)inputBytes[0] ^ 0x4B9ACE2F) * 0x1000193;
+
+            for (uint i = 1; i < input.Length; i++)
+            {
+                uint c = inputBytes[i];
+
+                if ( c -  65 <= 25)
+                {
+                    c += 32;
+                }
+
+                hash = (c ^ hash) * 0x1000193;
+            }
+
+            return hash;
         }
     }
 }

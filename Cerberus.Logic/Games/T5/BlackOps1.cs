@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace Cerberus.Logic.Games
+namespace Cerberus.Logic.Games.T5
 {
     public partial class BlackOps1
     {

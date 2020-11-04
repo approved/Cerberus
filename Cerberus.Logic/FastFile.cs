@@ -1,6 +1,10 @@
 ﻿using Cerberus.Logic.Extensions;
 using Cerberus.Logic.Games;
+using Cerberus.Logic.Games.T4;
+using Cerberus.Logic.Games.T6;
+using Cerberus.Logic.Games.T7;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
@@ -20,7 +24,7 @@ namespace Cerberus.Logic
         private readonly Platform _platform = Platform.PC;
         private readonly bool _isEncrypted = false;
         private readonly string _buildNumber = string.Empty;
-        private readonly XFile _xFileHeader = new XFile();
+        private XFile _xFileHeader = new XFile();
         private readonly string _ffName = string.Empty;
 
         public DevType GetDevType() => this._dev;
@@ -32,12 +36,19 @@ namespace Cerberus.Logic
         public XFile GetFileHeader() => this._xFileHeader;
         public string GetName() => this._ffName;
 
+        internal void SetFileHeader(XFile file)
+        {
+            this._xFileHeader = file;
+        }
+
         public CompressionLevel GetCompressionLevel() => this._compression switch
         {
             'u' => CompressionLevel.Fastest,
             '0' => CompressionLevel.Optimal,
             _ => throw new InvalidDataException("Invalid compression type.")
         };
+
+        public XAssetList? AssetList;
 
         /// <summary>
         /// Create a new instance of the Fast File class to access data in the compressed fast files used in Call of Duty games
@@ -163,29 +174,84 @@ namespace Cerberus.Logic
                         br.ReadBytes(256);
                     }
                 }
+                else if (this._dev is DevType.InfinityWard)
+                {
+                    if (this._version >= (int)IWFastFileVersion.T4WorldAtWar)
+                    {
+                        // Do Nothing
+                    }
+                }
             }
         }
 
         public void DecompressToFile(string outputPath)
         {
+            Decompress(outputPath);
+        }
+
+        public void ReadFileEntries()
+        {
+            string filePath = $"{this._openFileStream.Name}.raw";
+            Decompress(filePath);
+            using (BinaryReader br = new BinaryReader(File.OpenRead(filePath)))
+            {
+                switch (this._dev)
+                {
+                    case DevType.Treyarch:
+                    {
+                        switch (this._version)
+                        {
+                            case (int)TAFastFileVersion.T6BlackOps2:
+                            {
+                                this.AssetList = BlackOps2.ReadFastFile(this, br);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+
+            File.Delete(filePath);
+        }
+
+        private void Decompress(string outputPath)
+        {
             using (BinaryReader br = new BinaryReader(this._openFileStream, Encoding.UTF8, true))
             using (BinaryWriter bw = new BinaryWriter(File.Create(outputPath)))
             {
-                if (this._dev is DevType.Treyarch)
+                switch (this._dev)
                 {
-                    switch (this._version)
+                    case DevType.Treyarch:
                     {
-                        case (int)TAFastFileVersion.T6BlackOps2:
+                        switch (this._version)
                         {
-                            BlackOps2.Decompress(this, br, bw);
-                            break;
-                        }
+                            case (int)TAFastFileVersion.T6BlackOps2:
+                            {
+                                BlackOps2.Decompress(this, br, bw);
+                                break;
+                            }
 
-                        case (int)TAFastFileVersion.T7BlackOps3:
-                        {
-                            BlackOps3.Decompress(this, br, bw);
-                            break;
+                            case (int)TAFastFileVersion.T7BlackOps3:
+                            {
+                                BlackOps3.Decompress(this, br, bw);
+                                break;
+                            }
                         }
+                        break;
+                    }
+
+                    case DevType.InfinityWard:
+                    {
+                        switch (this._version)
+                        {
+                            case (int)IWFastFileVersion.T4WorldAtWar:
+                            {
+                                WorldAtWar.Decompress(br, bw);
+                                break;
+                            }
+                        }
+                        break;
                     }
                 }
             }
