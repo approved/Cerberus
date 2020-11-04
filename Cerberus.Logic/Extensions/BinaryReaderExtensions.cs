@@ -26,7 +26,7 @@ namespace Cerberus.Logic.Extensions
             byte b;
             int size = 0;
 
-            StringBuilder sb = new StringBuilder(maxSize);
+            StringBuilder sb = new StringBuilder();
             while ((b = br.ReadByte()) != 0 && size++ != maxSize)
             {
                 sb.Append(Convert.ToChar(b));
@@ -52,7 +52,7 @@ namespace Cerberus.Logic.Extensions
             ushort b;
             int size = 0;
 
-            StringBuilder sb = new StringBuilder(maxSize);
+            StringBuilder sb = new StringBuilder();
             while ((b = br.ReadUInt16()) != 0 && size++ != maxSize)
             {
                 sb.Append(Convert.ToChar(b));

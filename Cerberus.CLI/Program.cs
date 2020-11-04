@@ -1,4 +1,5 @@
 ﻿using Cerberus.Logic;
+using System;
 
 namespace Cerberus.CLI
 {
@@ -6,7 +7,19 @@ namespace Cerberus.CLI
     {
         public static void Main(string[] args)
         {
-            new FastFile(args[0]).DecompressToFile($"{args[0]}.raw");
+            FastFile ffile = new FastFile(args[0]);
+            //ffile.DecompressToFile($"{args[0]}.raw");
+
+            ffile.ReadFileEntries();
+            Console.WriteLine($"Found: \n" +
+                $"\t{ffile.AssetList.StringCount} Strings");
+            foreach (string str in ffile.AssetList.StringList)
+            {
+                Console.WriteLine($"\t\t{str}");
+            }
+
+            Console.WriteLine($"{ffile.AssetList.AssetCount} Assets");
+            Console.WriteLine($"{ffile.AssetList.Entries.Count} Entries");
         }
     }
 }
