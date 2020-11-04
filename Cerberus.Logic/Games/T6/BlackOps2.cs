@@ -1,6 +1,5 @@
 ﻿using Cerberus.Logic.Crypto;
 using Cerberus.Logic.Extensions;
-using Cerberus.Logic.Games.T6;
 using Cerberus.Logic.Games.T6.Assets;
 using System;
 using System.IO;
@@ -191,10 +190,8 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.XModelAlias:
                             break;
                         case T6XAssetType.RawFile:
-                        {
-                            LoadRawFile(assetList, br);
+                            T6RawFile.Load(assetList, br);
                             break;
-                        }
                         case T6XAssetType.StringTable:
                             break;
                         case T6XAssetType.Leaderboard:
@@ -246,32 +243,6 @@ namespace Cerberus.Logic.Games.T6
                     }
                 }
             }
-        }
-
-        private static void LoadRawFile(XAssetList assetList, BinaryReader br)
-        {
-            T6RawFile entry = new T6RawFile()
-            {
-                NamePointer = br.ReadInt32(),
-                Size = br.ReadInt32(),
-                DataPointer = br.ReadInt32()
-            };
-
-            if (entry.NamePointer != -1)
-            {
-                throw new InvalidDataException("XAsset name pointer entries are not supported");
-            }
-
-            entry.Name = br.ReadNativeString(0, SeekOrigin.Current, 128);
-
-            if (entry.DataPointer != -1)
-            {
-                throw new InvalidDataException("XAsset data pointer entries are not supported");
-            }
-
-            entry.SetData(br.ReadBytes((int)entry.Size + 1));
-
-            assetList.Entries.Add(entry);
         }
 
         public static void Decompress(FastFile fastfile, BinaryReader br, BinaryWriter bw)
