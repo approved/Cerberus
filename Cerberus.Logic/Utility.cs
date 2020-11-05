@@ -34,5 +34,16 @@ namespace Cerberus.Logic
                 return result;
             }
         }
+
+        public static ulong GetBits(ulong bitfield, int index, int size)
+        {
+            // discard unused lower bits
+            bitfield >>= index;
+
+            // discard unused upper bits
+            bitfield <<= 64 - size;
+            bitfield >>= 64 - size;
+            return bitfield;
+        }
     }
 }

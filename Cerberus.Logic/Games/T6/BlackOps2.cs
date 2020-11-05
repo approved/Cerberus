@@ -105,6 +105,12 @@ namespace Cerberus.Logic.Games.T6
                 for (int i = 0; i < assetList.AssetCount; i++)
                 {
                     T6XAsset asset = (T6XAsset)assetList.AssetList[i];
+                    if (asset.GetHeaderPtr() != -1)
+                    {
+                        Console.WriteLine($"Asset at index {i} is a pointer asset");
+                        return;
+                    }
+
                     switch ((T6XAssetType)asset.GetAssetType())
                     {
                         case T6XAssetType.XModelPieces:
@@ -122,6 +128,7 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.Material:
                             break;
                         case T6XAssetType.TechniqueSet:
+                            T6MaterialTechniqueSet.Load(assetList, br);
                             break;
                         case T6XAssetType.Image:
                             break;
@@ -130,7 +137,6 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.SoundPatch:
                             break;
                         case T6XAssetType.ClipMap:
-                            break;
                         case T6XAssetType.ClipMapPVS:
                             break;
                         case T6XAssetType.ComWorld:
