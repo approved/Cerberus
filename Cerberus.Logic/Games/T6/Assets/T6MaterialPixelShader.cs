@@ -7,19 +7,23 @@ namespace Cerberus.Logic.Games.T6.Assets
     {
         private int _namePtr;
         public string Name;
-        public T6MaterialShaderProgram Program;
-        
+        public uint Size;
+        public int ProgramPtr;
+        public byte[] Program;
+
         public T6MaterialPixelShader(BinaryReader br)
         {
             this._namePtr = br.ReadInt32();
 
-            br.ReadBytes(12);
+            // D3D11VertexShader Pointer - Unused in fastfiles?
+            br.ReadBytes(4);
 
-            this.Name = br.PeekNativeString();
+            this.ProgramPtr = br.ReadInt32();
+            this.Size = br.ReadUInt32();
 
-            br.BaseStream.Seek(-12, SeekOrigin.Current);
+            this.Name = br.ReadNativeString();
 
-            this.Program = new T6MaterialShaderProgram(br);
+            this.Program = br.ReadBytes((int)this.Size);
         }
     }
 }

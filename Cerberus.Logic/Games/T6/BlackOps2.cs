@@ -126,6 +126,7 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.XModel:
                             break;
                         case T6XAssetType.Material:
+                            T6Material.Load(assetList, br);
                             break;
                         case T6XAssetType.TechniqueSet:
                             T6MaterialTechniqueSet.Load(assetList, br);

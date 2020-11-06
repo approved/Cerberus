@@ -5,6 +5,7 @@ namespace Cerberus.Logic.Games.T6.Assets
 {
     public class T6MaterialTechnique
     {
+        private int NamePtr;
         public string Name = string.Empty;
         public ushort Flags;
         public ushort PassCount;
@@ -17,9 +18,7 @@ namespace Cerberus.Logic.Games.T6.Assets
         
         public T6MaterialTechnique(BinaryReader br)
         {
-            this.Name = br.ReadNativeString();
-
-            br.ReadBytes(4);
+            this.NamePtr = br.ReadInt32();
 
             this.Flags = br.ReadUInt16();
             this.PassCount = br.ReadUInt16();
@@ -29,6 +28,8 @@ namespace Cerberus.Logic.Games.T6.Assets
             {
                 this.Pass[i] = new T6MaterialPass(br);
             }
+
+            this.Name = br.ReadNativeString();
         }
     }
 }

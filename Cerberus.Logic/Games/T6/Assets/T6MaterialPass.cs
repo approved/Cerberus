@@ -32,7 +32,8 @@ namespace Cerberus.Logic.Games.T6.Assets
             this.PrecompiledIndex = br.ReadByte();
             this.MaterialType = br.ReadByte();
 
-            br.BaseStream.Seek(br.BaseStream.Position % 4, SeekOrigin.Current);
+            // Padding
+            br.ReadBytes(2);
 
             this.MaterialShaderArgPtr = br.ReadInt32();
 

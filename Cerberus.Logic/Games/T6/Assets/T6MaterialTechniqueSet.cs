@@ -16,6 +16,15 @@ namespace Cerberus.Logic.Games.T6.Assets
         public T6MaterialTechniqueSet(BinaryReader br)
         {
             this.NamePtr = br.ReadInt32();
+            this.WorldVertexFormat = br.ReadByte();
+
+            // Padding
+            br.ReadBytes(3);
+
+            for (int i = 0; i < TechniqueSetCount; i++)
+            {
+                this.TechniquePtrList[i] = br.ReadInt32();
+            }
 
             if (this.NamePtr != -1)
             {
@@ -24,21 +33,16 @@ namespace Cerberus.Logic.Games.T6.Assets
 
             this.Name = br.ReadNativeString();
 
-            // TODO: Properly Align - Reading will fail if string is less than 3 characters + null char
-            if (string.IsNullOrEmpty(this.Name))
-            {
-                br.ReadBytes(3);
-            }
-
             for (int i = 0; i < TechniqueSetCount; i++)
             {
-                this.TechniquePtrList[i] = br.ReadInt32();
-            }
+                if (this.TechniquePtrList[i] == 0)
+                {
+                    continue;
+                }
 
-            for (int i = 0; i < TechniqueSetCount; i++)
-            {
                 if (this.TechniquePtrList[i] != -1)
                 {
+                    // TODO: Implement Offset To Pointer conversion
                     continue;
                 }
 
