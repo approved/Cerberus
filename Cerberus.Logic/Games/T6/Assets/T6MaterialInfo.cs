@@ -19,6 +19,8 @@ namespace Cerberus.Logic.Games.T6.Assets
         public int SurfaceFlags;
         public int Contents;
 
+        public T6MaterialInfo(byte[] data) : this(new BinaryReader(new MemoryStream(data))) { }
+
         // Aligned to 8 bytes
         public T6MaterialInfo(BinaryReader br)
         {

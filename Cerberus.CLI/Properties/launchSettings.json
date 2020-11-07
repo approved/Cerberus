@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Cerberus.CLI": {
+      "commandName": "Project",
+      "commandLineArgs": "\"D:\\Games\\SteamLibrary\\steamapps\\common\\Call of Duty Black Ops II\\zone\\all\\patch_ui_zm.ff\""
+    }
+  }
+}

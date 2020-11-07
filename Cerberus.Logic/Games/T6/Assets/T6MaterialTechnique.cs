@@ -10,11 +10,6 @@ namespace Cerberus.Logic.Games.T6.Assets
         public ushort Flags;
         public ushort PassCount;
         public T6MaterialPass[] Pass = new T6MaterialPass[1];
-
-        public static void Load(XAssetList list, BinaryReader br)
-        {
-
-        }
         
         public T6MaterialTechnique(BinaryReader br)
         {

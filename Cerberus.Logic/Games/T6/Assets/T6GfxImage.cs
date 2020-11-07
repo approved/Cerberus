@@ -5,6 +5,7 @@ namespace Cerberus.Logic.Games.T6.Assets
 {
     public class T6GfxImage
     {
+        public int TexturePtr;
         public T6GfxTexture? Texture;
         public byte MapType;
         public byte Semantic;
@@ -25,13 +26,14 @@ namespace Cerberus.Logic.Games.T6.Assets
         public byte StreamedPartCount;
         public int LoadedSize;
         public byte SkippedMipLevels;
+        public int NamePtr;
         public string Name;
         public int Hash;
 
         // Size Of 0x50 (80)
         public T6GfxImage(BinaryReader br)
         {
-            int texturePtr = br.ReadInt32();
+            this.TexturePtr = br.ReadInt32();
             this.MapType = br.ReadByte();
             this.Semantic = br.ReadByte();
             this.Category = br.ReadByte();
@@ -60,15 +62,8 @@ namespace Cerberus.Logic.Games.T6.Assets
 
             br.ReadBytes(3);
 
-            int namePtr = br.ReadInt32();
+            this.NamePtr = br.ReadInt32();
             this.Hash = br.ReadInt32();
-
-            this.Name = br.ReadNativeString();
-
-            if (texturePtr == -1)
-            {
-                this.Texture = new T6GfxTexture(br);
-            }
         }
     }
 }

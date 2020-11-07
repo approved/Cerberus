@@ -126,10 +126,10 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.XModel:
                             break;
                         case T6XAssetType.Material:
-                            T6Material.Load(assetList, br);
+                            assetList.Entries.Add(T6Material.LoadMaterial(br));
                             break;
                         case T6XAssetType.TechniqueSet:
-                            T6MaterialTechniqueSet.Load(assetList, br);
+                            assetList.Entries.Add(T6MaterialTechniqueSet.LoadSet(br));
                             break;
                         case T6XAssetType.Image:
                             break;
@@ -197,7 +197,7 @@ namespace Cerberus.Logic.Games.T6
                         case T6XAssetType.XModelAlias:
                             break;
                         case T6XAssetType.RawFile:
-                            T6RawFile.Load(assetList, br);
+                            assetList.Entries.Add(new T6RawFile(br));
                             break;
                         case T6XAssetType.StringTable:
                             break;

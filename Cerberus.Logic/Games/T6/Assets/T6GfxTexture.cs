@@ -24,9 +24,6 @@ namespace Cerberus.Logic.Games.T6.Assets
             this.Format = br.ReadInt32();
             this.ResourceSize = br.ReadInt32();
 
-            // Read Data[0] char which will be overwritten + 3 bytes for padding
-            br.ReadBytes(4);
-
             this.Data = br.ReadBytes(ResourceSize);
         }
     }
